@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Drive Zone Pro - Remote Multiplayer</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #0b0b1e; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; user-select: none; touch-action: none; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* واجهة الغرف الاحترافية */
+        #lobby-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; background: rgba(15, 15, 35, 0.9); padding: 30px; border-radius: 15px; box-shadow: 0 0 30px rgba(255, 0, 127, 0.5); text-align: center; border: 2px solid #ff007f; width: 85%; max-width: 340px; }
+        h1 { font-size: 28px; margin-bottom: 20px; text-shadow: 0 0 10px #ff007f; letter-spacing: 2px; color: #fff; }
+        h1 span { color: #ff007f; text-shadow: 0 0 15px #ff007f; }
+        input { width: 90%; padding: 12px; margin-bottom: 15px; background: rgba(255,255,255,0.1); border: 1px solid #ff007f; border-radius: 8px; color: #fff; font-size: 16px; text-align: center; outline: none; }
+        input:focus { box-shadow: 0 0 10px #ff007f; }
+        .btn-menu { width: 98%; padding: 14px; margin: 8px 0; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        .btn-create { background: linear-gradient(45deg, #ff007f, #7f00ff); box-shadow: 0 4px 15px rgba(255, 0, 127, 0.4); }
+        .btn-join { background: transparent; border: 2px solid #00f3ff; color: #00f3ff; box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); }
+        .btn-join:hover { background: #00f3ff; color: #000; }
+        
+        /* الـ HUD وأزرار التحكم للموبايل */
+        #room-info { position: absolute; top: 20px; left: 20px; z-index: 5; font-size: 14px; background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 20px; border-left: 4px solid #ff007f; display: none; }
+        #hud { position: absolute; top: 20px; right: 20px; z-index: 5; font-size: 22px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 10px; border: 1px solid #00f3ff; display: none; color: #00f3ff; text-shadow: 0 0 10px #00f3ff; }
+        
+        #controls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 5; display: none; width: 90%; max-width: 400px; justify-content: space-between; align-items: center; }
+        .steering-box { display: grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(2, 60px); gap: 10px; }
+        .pedal-box { display: flex; gap: 20px; }
+        .btn-drive { background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255,255,255,0.4); border-radius: 12px; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; user-select: none; }
+        .btn-drive:active { background: #ff007f; border-color: #ff007f; box-shadow: 0 0 15px #ff007f; }
+        .btn-gas { width: 65px; height: 90px; background: rgba(0, 243, 255, 0.2); border: 2px solid #00f3ff; color: #00f3ff; border-radius: 10px; font-size: 28px; font-weight: bold; }
+        .btn-gas:active { background: #00f3ff; color: #000; box-shadow: 0 0 20px #00f3ff; }
+        .btn-brake { width: 65px; height: 75px; background: rgba(255, 0, 127, 0.2); border: 2px solid #ff007f; color: #ff007f; border-radius: 10px; font-size: 24px; font-weight: bold; align-self: flex-end; }
+        .btn-brake:active { background: #ff007f; color: #fff; box-shadow: 0 0 20px #ff007f; }
+        
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+        
+        #loading { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #050510; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 18px; color: #00f3ff; }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(0,243,255,0.1); border-top-color: #00f3ff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">جاري الاتصال بالسيرفر وسحب سيارة الفيراري الـ 3D الحقيقية...</div>
+    </div>
+
+    <div id="lobby-menu">
+        <h1>DRIVE<span>ZONE</span></h1>
+        <input type="text" id="player-name" placeholder="أدخل اسمك كقائد">
+        <input type="text" id="room-id" placeholder="كود الغرفة لبدء السباق">
+        <button class="btn-menu btn-create" onclick="startMultiplayer('create')">إنشاء غرفة جديدة أونلاين</button>
+        <button class="btn-menu btn-join" onclick="startMultiplayer('join')">دخول غرفة موجودة</button>
+    </div>
+
+    <div id="room-info">رقم غرفتك المباشر: <span id="display-room" style="color:#ff007f; font-weight:bold;">-</span></div>
+    <div id="hud">السرعة: <span id="speed">0</span> كم/س</div>
+    <div id="canvas-container"></div>
+
+    <div id="controls">
+        <div class="steering-box">
+            <button class="btn-drive" id="btn-up">▲</button>
+            <button class="btn-drive" id="btn-left">◀</button>
+            <button class="btn-drive" id="btn-down">▼</button>
+            <button class="btn-drive" id="btn-right">▶</button>
+        </div>
+        <div class="pedal-box">
+            <button class="btn-drive btn-brake" id="btn-brake">B</button>
+            <button class="btn-drive btn-gas" id="btn-gas">GO</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
+    <script>
+        let scene, camera, renderer, car, carBody;
+        let moveState = { forward: false, backward: false, left: false, right: false };
+        let speed = 0;
+        const maxSpeed = 0.8;
+        const acceleration = 0.015;
+        const deceleration = 0.01;
+        const turnSpeed = 0.04;
+        
+        let peer, conn;
+        let otherPlayers = {};
+        let myId, myName, currentRoom;
+
+        // إخفاء التحميل المبدئي
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 1500);
+        });
+
+        // تشغيل العالم الـ 3D والبيئة المحيطة
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#0a0a1a');
+            scene.fog = new THREE.FogExp2('#0a0a1a', 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // الإضاءة النيون للسباقات الليلية
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0x00f3ff, 0.8);
+            dirLight.position.set(50, 100, 50);
+            scene.add(dirLight);
+
+            const neonLight = new THREE.PointLight(0xff007f, 1, 50);
+            neonLight.position.set(0, 5, 0);
+            scene.add(neonLight);
+
+            // أرضية مضمار السباق الاسفلتية الرقمية
+            const gridGeo = new THREE.PlaneGeometry(2000, 2000, 100, 100);
+            const gridMat = new THREE.MeshBasicMaterial({ color: 0x111126, wireframe: true });
+            const grid = new THREE.Mesh(gridGeo, gridMat);
+            grid.rotation.x = -Math.PI / 2;
+            scene.add(grid);
+
+            // بناء الفيراري الرياضية بالكامل بقطع هندسية نيون عالية الجودة
+            car = new THREE.Group();
+            
+            // جسم السيارة السفلي الانسيابي
+            const bodyGeo = new THREE.BoxGeometry(1.8, 0.4, 4);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd50000, roughness: 0.1, metalness: 0.8 }); // أحمر فيراري لامع
+            carBody = new THREE.Mesh(bodyGeo, bodyMat);
+            carBody.position.y = 0.3;
+            car.add(carBody);
+
+            // سقف وجناح السيارة الرياضي الرياضي المتكامل
+            const cabinGeo = new THREE.BoxGeometry(1.4, 0.4, 1.8);
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2 });
+            const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+            cabin.position.set(0, 0.7, -0.2);
+            car.add(cabin);
+
+            // كشافات نيون أمامية قوية جداً
+            const lightGeo = new THREE.BoxGeometry(0.3, 0.1, 0.1);
+            const lightMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
+            const leftLight = new THREE.Mesh(lightGeo, lightMat); leftLight.position.set(0.7, 0.3, 2); car.add(leftLight);
+            const rightLight = new THREE.Mesh(lightGeo, lightMat); rightLight.position.set(-0.7, 0.3, 2); car.add(rightLight);
+
+            // العجلات الأربعة الرياضية الكبيرة بالجنوط
+            const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.4, 16);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
+            
+            const wPositions = [[0.9,0.4,1.2], [-0.9,0.4,1.2], [0.9,0.4,-1.2], [-0.9,0.4,-1.2]];
+            wPositions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(pos[0], pos[1], pos[2]);
+                car.add(wheel);
+            });
+
+            scene.add(car);
+            
+            // تهيئة وضع أزرار اللمس للموبايل
+            setupMobileControls();
+            
+            // حلقة التحريك وتحديث الكادرات
+            animate();
+        }
+
+        // تحركات وحسابات حركة الفيراري والفيزياء الخاصة بها
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // تسارع السيارة وضغط الدواسات
+            if (moveState.forward) {
+                speed = Math.min(speed + acceleration, maxSpeed);
+            } else if (moveState.backward) {
+                speed = Math.max(speed - acceleration, -maxSpeed/2);
+            } else {
+                if (speed > 0) speed = Math.max(speed - deceleration, 0);
+                if (speed < 0) speed = Math.min(speed + deceleration, 0);
+            }
+
+            // التوجيه يميناً ويساراً مع الانعطاف
+            if (moveState.left) car.rotation.y += turnSpeed * (speed / maxSpeed + 0.3);
+            if (moveState.right) car.rotation.y -= turnSpeed * (speed / maxSpeed + 0.3);
+
+            // تحديث موقع العربية بناء على الزاوية الحالية لقائد المركبة
+            car.translateZ(speed);
+
+            // لوحة التحديث الرقمية للسرعة
+            document.getElementById('speed').innerText = Math.round(Math.abs(speed) * 320);
+
+            // الكاميرا تلاحق الفيراري بمرونة سينمائية من الخلف
+            const relativeCameraOffset = new THREE.Vector3(0, 2.5, -7);
+            const cameraOffset = relativeCameraOffset.applyMatrix4(car.matrixWorld);
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraOffset.x, 0.1);
+            camera.position.y = THREE.MathUtils.lerp(camera.position.y, cameraOffset.y, 0.1);
+            camera.position.z = THREE.MathUtils.lerp(camera.position.z, cameraOffset.z, 0.1);
+            camera.lookAt(car.position.x, car.position.y + 0.5, car.position.z);
+
+            // بث إحداثيات وموقع حركتك فوراً لكل اللاعبين المتصلين معك في نفس اللحظة
+            broadcastPosition();
+
+            renderer.render(scene, camera);
+        }
+
+        // أزرار شاشات الموبايل (Touch Events)
+        function setupMobileControls() {
+            const bindControl = (id, property) => {
+                const btn = document.getElementById(id);
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); moveState[property] = true; });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); moveState[property] = false; });
+            };
+            
+            bindControl('btn-up', 'forward');
+            bindControl('btn-gas', 'forward');
+            bindControl('btn-down', 'backward');
+            bindControl('btn-brake', 'backward');
+            bindControl('btn-left', 'left');
+            bindControl('btn-right', 'right');
+        }
+
+        // ربط نظام الغرف الأونلاين والشبكة (Multiplayer Network)
+        function startMultiplayer(mode) {
+            myName = document.getElementById('player-name').value.trim() || "سائق محترف";
+            const roomInput = document.getElementById('room-id').value.trim();
+
+            if (!roomInput) {
+                alert("برجاء إدخال كود الغرفة لتتمكن من اللعب أونلاين!");
+                return;
+            }
+
+            currentRoom = "racezone-" + roomInput;
+            document.getElementById('lobby-menu').style.display = 'none';
+            document.getElementById('room-info').style.display = 'block';
+            document.getElementById('hud').style.display = 'block';
+            document.getElementById('controls').style.display = 'flex';
+            document.getElementById('display-room').innerText = roomInput;
+
+            init3D();
+
+            // إنشاء الاتصال المباشر P2P السريع بدون وسيط
+            if (mode === 'create') {
+                peer = new Peer(currentRoom);
+                peer.on('open', (id) => {
+                    console.log("تم فتح الغرفة بنجاح بكود: " + id);
+                });
+                peer.on('connection', (connection) => {
+                    conn = connection;
+                    setupConnection();
+                });
+            } else {
+                peer = new Peer();
+                peer.on('open', (id) => {
+                    myId = id;
+                    conn = peer.connect(currentRoom);
+                    setupConnection();
+                });
+            }
+        }
+
+        function setupConnection() {
+            conn.on('data', (data) => {
+                if (data.type === 'move') {
+                    updateOtherPlayer(data);
+                }
+            });
+        }
+
+        // تحديث وإظهار سيارات المنافسين الأونلاين معك في المضمار
+        function updateOtherPlayer(data) {
+            if (!otherPlayers[data.id]) {
+                // بناء سيارة فيراري أخرى بلون أزرق سباق للمنافسين
+                const enemyCar = new THREE.Group();
+                const bGeo = new THREE.BoxGeometry(1.8, 0.4, 4);
+                const bMat = new THREE.MeshStandardMaterial({ color: 0x0044ff, roughness: 0.1 }); // فيراري زرقاء للمنافس
+                const body = new THREE.Mesh(bGeo, bMat);
+                body.position.y = 0.3;
+                enemyCar.add(body);
+                
+                const cabGeo = new THREE.BoxGeometry(1.4, 0.4, 1.8);
+                const cabMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+                const cab = new THREE.Mesh(cabGeo, cabMat);
+                cab.position.set(0, 0.7, -0.2);
+                enemyCar.add(cab);
+
+                scene.add(enemyCar);
+                otherPlayers[data.id] = enemyCar;
+            }
+
+            // نقل حركة الخصم فورياً بالملي ثانية ومزامنتها على شاشتك
+            otherPlayers[data.id].position.set(data.pos.x, data.pos.y, data.pos.z);
+            otherPlayers[data.id].rotation.set(data.rot.x, data.rot.y, data.rot.z);
+        }
+
+        function broadcastPosition() {
+            if (conn && conn.open) {
+                conn.send({
+                    type: 'move',
+                    id: myId || currentRoom,
+                    name: myName,
+                    pos: car.position,
+                    rot: car.rotation
+                });
+            }
+        }
+
+        // معالجة تغيير حجم الشاشة تلقائياً
+        window.addEventListener('resize', () => {
+            if(camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+    </script>
+</body>
+</html>
+
