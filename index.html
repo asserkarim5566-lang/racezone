@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Drive Zone - Neon City</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; }
+        #controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 10; }
+        .btn { padding: 30px; border-radius: 50%; background: #ff007f; color: white; border: none; font-size: 24px;}
+        #hud { position: absolute; top: 10px; left: 10px; color: #00ffff; font-family: sans-serif; z-index: 10; font-size: 18px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="hud">المدينة المضيئة - جاهز!</div>
+    <div id="controls">
+        <button class="btn" id="left">◀</button>
+        <button class="btn" id="go">GO</button>
+        <button class="btn" id="right">▶</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 1. بناء الطريق (BasicMaterial مش بيحتاج إضاءة)
+        const road = new THREE.Mesh(
+            new THREE.PlaneGeometry(50, 5000), 
+            new THREE.MeshBasicMaterial({color: 0x333333}) 
+        );
+        road.rotation.x = -Math.PI/2;
+        scene.add(road);
+
+        // 2. بناء المباني (خليناها شبكة نيون زرقاء عشان تبان 100%)
+        for(let i = 0; i < 50; i++) {
+            const building = new THREE.Mesh(
+                new THREE.BoxGeometry(10, 30, 10), 
+                new THREE.MeshBasicMaterial({color: 0x00ffff, wireframe: true}) 
+            );
+            building.position.set(i % 2 === 0 ? 30 : -30, 15, i * -40);
+            scene.add(building);
+        }
+
+        // 3. بناء العربية (لون أحمر ساطع من نفسه)
+        const car = new THREE.Mesh(
+            new THREE.BoxGeometry(5, 3, 10), 
+            new THREE.MeshBasicMaterial({color: 0xff0000}) 
+        );
+        car.position.y = 1.5;
+        scene.add(car);
+
+        // 4. الحركة
+        let speed = 0;
+        document.getElementById('go').addEventListener('touchstart', () => speed = 2);
+        document.getElementById('go').addEventListener('touchend', () => speed = 0);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            car.position.z -= speed;
+            camera.position.set(car.position.x, car.position.y + 10, car.position.z + 20);
+            camera.lookAt(car.position);
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
+
