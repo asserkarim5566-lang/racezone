@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Drive Zone - Neon City</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; }
+        #controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 20px; }
+        .btn { padding: 30px; border-radius: 50%; background: #ff007f; color: white; border: none; }
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <button class="btn" id="left">◀</button>
+        <button class="btn" id="go">GO</button>
+        <button class="btn" id="right">▶</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // 1. إعداد المشهد
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 2. الإضاءة (بدونها الشاشة هتفضل سودة)
+        const light = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(light);
+
+        // 3. بناء الطريق
+        const road = new THREE.Mesh(new THREE.PlaneGeometry(50, 5000), new THREE.MeshStandardMaterial({color: 0x333333}));
+        road.rotation.x = -Math.PI/2;
+        scene.add(road);
+
+        // 4. بناء المباني (المدينة)
+        for(let i = 0; i < 50; i++) {
+            const building = new THREE.Mesh(new THREE.BoxGeometry(10, 30, 10), new THREE.MeshStandardMaterial({color: 0x0000ff}));
+            building.position.set(i % 2 === 0 ? 30 : -30, 15, i * -40);
+            scene.add(building);
+        }
+
+        // 5. بناء العربية
+        const car = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 10), new THREE.MeshStandardMaterial({color: 0xff0000}));
+        car.position.y = 1.5;
+        scene.add(car);
+
+        // 6. الحركة
+        let speed = 0;
+        document.getElementById('go').addEventListener('touchstart', () => speed = 2);
+        document.getElementById('go').addEventListener('touchend', () => speed = 0);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            car.position.z -= speed;
+            camera.position.set(car.position.x, car.position.y + 10, car.position.z + 20);
+            camera.lookAt(car.position);
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
+
