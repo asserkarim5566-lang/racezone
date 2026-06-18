@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drive Zone - Neon City</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        #hud { position: absolute; top: 10px; left: 10px; color: #00f3ff; font-weight: bold; background: rgba(0,0,0,0.5); padding: 10px; z-index: 10; }
+        #controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 10; }
+        .btn { padding: 25px; border-radius: 50%; border: none; background: #ff007f; color: white; font-size: 20px; touch-action: manipulation; }
+    </style>
+</head>
+<body>
+    <div id="hud">المدينة جاهزة - انطلق!</div>
+    <div id="controls">
+        <button class="btn" id="left">◀</button>
+        <button class="btn" id="go">GO</button>
+        <button class="btn" id="right">▶</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        scene.fog = new THREE.Fog(0x050505, 50, 200);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // بناء المدينة (المباني)
+        for(let i = 0; i < 100; i++) {
+            const h = Math.random() * 50 + 10;
+            const b = new THREE.Mesh(new THREE.BoxGeometry(10, h, 10), new THREE.MeshStandardMaterial({color: 0x111133}));
+            const x = (Math.random() > 0.5 ? 30 : -30);
+            b.position.set(x, h/2, i * -40);
+            scene.add(b);
+        }
+
+        // الطريق
+        const road = new THREE.Mesh(new THREE.PlaneGeometry(50, 5000), new THREE.MeshBasicMaterial({color: 0x222222}));
+        road.rotation.x = -Math.PI/2;
+        scene.add(road);
+
+        // العربية
+        const car = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 8), new THREE.MeshStandardMaterial({color: 0xff0000}));
+        scene.add(car);
+
+        let speed = 0;
+        let rotation = 0;
+
+        document.getElementById('go').addEventListener('touchstart', () => speed = 2);
+        document.getElementById('go').addEventListener('touchend', () => speed = 0);
+        document.getElementById('left').addEventListener('touchstart', () => rotation = 0.1);
+        document.getElementById('left').addEventListener('touchend', () => rotation = 0);
+        document.getElementById('right').addEventListener('touchstart', () => rotation = -0.1);
+        document.getElementById('right').addEventListener('touchend', () => rotation = 0);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            car.position.z -= speed;
+            car.rotation.y += rotation;
+            camera.position.set(car.position.x, car.position.y + 5, car.position.z + 15);
+            camera.lookAt(car.position);
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
+
